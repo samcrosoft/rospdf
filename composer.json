@@ -1,0 +1,18 @@
+{
+    "name": "samcrosoft/rospdf",
+    "description": "Unofficial PSR-0 compliant version of the R&os pdf library",
+    "homepage": "http://pdf-php.sourceforge.net/",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "samcrosoft",
+            "email": "samcrosoft@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload" : {
+        "psr-0": { "Rospdf\\": "rospdf\\src" }
+    }
+}
