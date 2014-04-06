@@ -1,4 +1,5 @@
 <?php
+namespace Rospdf\libraries; //added by samcrosoft
 /*
     TTFsubset.php: TrueType font file reader and writer
     Copyright (C) 2012 Thanos Efraimidis (4real.gr)
@@ -16,8 +17,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-namespace Rospdf\libraries; //added by samcrosoft
-//include_once('TTF.php');
+
+// include_once('TTF.php');
 
 class TTFsubset {
     const VERBOSE = false; // For debugging
@@ -445,7 +446,7 @@ class TTFsubset {
     }
 
     private function assignNewIndices() {
-	usort($this->TTFchars, array('TTFsubset', 'TTFcharComparatorOnCharCode'));
+	usort($this->TTFchars, array('Rospdf\libraries\TTFsubset', 'TTFcharComparatorOnCharCode'));
 
 	// Assign newIndex
 	$newIndex = 0;

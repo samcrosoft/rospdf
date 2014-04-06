@@ -32,6 +32,8 @@ class CReportTest extends Cezpdf{
     }
 }
 $pdf = new CReportTest('a4','portrait');
+//$pdf->tempPath = "c:\\xampp\\tmp";
+$pdf->tempPath = sys_get_temp_dir();
 
 $pdf->ezSetMargins(20,20,20,20);
 $pdf->openHere('Fit');
@@ -52,4 +54,4 @@ if (isset($_GET['d']) && $_GET['d']){
 }
 
 $end = microtime(true) - $start;
-error_log($end . ' o');
+//error_log($end . ' o');
