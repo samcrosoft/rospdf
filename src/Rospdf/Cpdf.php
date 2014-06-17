@@ -1,6 +1,7 @@
 <?php
 namespace Rospdf;   // added by adebola
 use Rospdf\libraries\TTFsubset as TTFsubset;
+use Rospdf\libraries\TTF as TTF;
 //@include_once('include/TTFsubset.php');
 
 /**
@@ -1848,7 +1849,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
         
         // if no cache is found, parse the font file and rebuild the cache
         $this->debug('openFont: rebuilding font cache '.$cachedFile, E_USER_NOTICE);
-        if(file_exists($fullFontPath.'.ttf') && class_exists('TTF')){
+        if(file_exists($fullFontPath.'.ttf') && class_exists('Rospdf\libraries\TTF')){
             $ttf = new TTF(file_get_contents($fullFontPath.'.ttf'));
             
             $head = $ttf->unmarshalHead();
@@ -2060,7 +2061,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
      */
     public function selectFont($fontName, $encoding = '', $set = 1, $subsetFont = false)
     {
-        if($subsetFont && !class_exists('TTFsubset')){
+        if($subsetFont && !class_exists('Rospdf\libraries\TTFsubset')){
             $this->debug("TTFsubset class not found. Falling back to complete font program", E_USER_WARNING);
             $subsetFont = false;
         }
