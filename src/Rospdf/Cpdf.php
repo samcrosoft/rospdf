@@ -1,7 +1,6 @@
 <?php
 namespace Rospdf;   // added by adebola
 use Rospdf\libraries\TTFsubset as TTFsubset;
-
 //@include_once('include/TTFsubset.php');
 
 /**
@@ -39,7 +38,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
  *
  * @category Documents
  * @package	 Cpdf
- * @version [0.12-rc12] $Id: Cpdf.php 207 2013-11-19 16:18:14Z ole1986 $
+ * @version  $Id: Cpdf.php 274 2014-03-21 12:25:04Z ole1986 $
  * @author   Wayne Munro (inactive) <pdf@ros.co.nz>
  * @author   Lars Olesen <lars@legestue.net>
  * @author   Sune Jensen <sj@sunet.dk>
@@ -280,7 +279,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
     /**
      * object Id storage stack
      */
-    private $stack=array();
+    protected $stack = array();
 
     /**
      * number of elements within the object Id storage stack
@@ -350,7 +349,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
     /**
      * the file identifier, used to uniquely identify a pdf document
      */
-    public $fileIdentifier='';
+    public $fileIdentifier;
 
     /**
      * Set the encryption mode
@@ -1108,7 +1107,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
         switch ($action){
         case 'new':
             $this->infoObject=$id;
-            $date='D:'.date('Ymd');
+            $date='D:'.date('YmdHis')."-00'00";
             $this->objects[$id]=array('t'=>'info','info'=>array('Creator'=>'R&OS php pdf class, http://pdf-php.sf.net/','CreationDate'=>$date));
             break;
         case 'Title':
@@ -1777,54 +1776,6 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
     }
 
     /**
-     * return the pdf stream as a string returned from the function
-     * This method is protect to force user to use ezOutput from Cezpdf.php
-     */
-    function output($debug=0){
-        if ($debug){
-            // turn compression off
-            $this->options['compression']=0;
-        }
-
-        if ($this->arc4_objnum){
-            $this->ARC4_init($this->encryptionKey);
-        }
-        
-        if($this->valid){
-            $this->debug('The output method has been executed again', E_USER_WARNING);
-        }
-
-        $this->checkAllHere();
-
-        $xref=array();
-        // set the pdf version dynamically, depended on the objects being used
-        $content="%PDF-".sprintf('%.1F', $this->pdfversion)."\n%\xe2\xe3\xcf\xd3";
-        $pos=strlen($content);
-        foreach($this->objects as $k=>$v){
-            $tmp='o_'.$v['t'];
-            $cont=$this->$tmp($k,'out');
-            $content.=$cont;
-            $xref[]=$pos;
-            $pos+=strlen($cont);
-        }
-        ++$pos;
-        $content.="\nxref\n0 ".(count($xref)+1)."\n0000000000 65535 f \n";
-        foreach($xref as $p){
-            $content.=substr('0000000000',0,10-strlen($p+1)).($p+1)." 00000 n \n";
-        }
-        $content.="trailer\n<< /Size ".(count($xref)+1)." /Root 1 0 R /Info ".$this->infoObject." 0 R";
-        // if encryption has been applied to this document then add the marker for this dictionary
-        if ($this->arc4_objnum > 0){
-            $content .= " /Encrypt ".$this->arc4_objnum." 0 R";
-        }
-        if (strlen($this->fileIdentifier)){
-            $content .= " /ID [<".$this->fileIdentifier."><".$this->fileIdentifier.">]";
-        }
-        $content .= " >>\nstartxref\n".$pos."\n%%EOF\n";
-        return $content;
-    }
-
-    /**
      * intialize a new document
      * if this is called on an existing document results may be unpredictable, but the existing document would be lost at minimum
      * this function is called automatically by the constructor function
@@ -1988,9 +1939,11 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
                         }
                     }
                 }
-                $cidtogid = str_pad('', 256*256*2, "\x00");
+				
+				if($this->isUnicode)
+					$cidtogid = str_pad('', 256*256*2, "\x00");
+				
                 $cachedFont['C'] = array();
-                
                 foreach($charToGlyph as $char => $glyphIndex){
                     if(!empty($char)){
                         $m = TTF::getHMetrics($hmetrics, $hhea['numberOfHMetrics'], $glyphIndex);
@@ -2010,7 +1963,8 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
                 $this->debug('openFont: font file does not contain format 4 cmap', E_USER_WARNING);
             }
             
-            $cachedFont['CIDtoGID'] = base64_encode($cidtogid);
+			if(isset($cidtogid))
+            	$cachedFont['CIDtoGID'] = base64_encode($cidtogid);
             
         } else if(file_exists($fullFontPath.'.afm')){
             // use the core font program
@@ -2100,8 +2054,8 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
      *
      * @param string  $fontName Name of the font incl. path
      * @param string  $encoding Which encoding to use
-     * @param integer $set      What is this
-     *
+     * @param integer $set used to force set the selected font
+     * @param bool $subsetFont allow font subsetting
      * @return void
      */
     public function selectFont($fontName, $encoding = '', $set = 1, $subsetFont = false)
@@ -2178,29 +2132,22 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
                     $widths = array();
                     $cid_widths = array();
                     
-                    foreach ($font['C'] as $num => $d){
-                        if (intval($num) > 0 || $num == '0'){
-                            if(!$font['isUnicode']){
-                                if ($lastChar > 0 && $num > $lastChar + 1){
-                                    for($i = $lastChar + 1; $i < $num; $i++){
-                                        $widths[] = 0;
-                                    }
-                                }
-                            }
-                            $widths[] = $d;
-                            
-                            if ($font['isUnicode']) {
-                                $cid_widths[$num] = $d;
-                              }
-                            
-                            if ($firstChar == -1){
-                                $firstChar = $num;
-                            }
-                            $lastChar = $num;
-                        }
-                    }
+					if(!$font['isUnicode']){
+						for($i = 0; $i < 255; $i++){
+							if (isset($options['differences']) && isset($options['differences'][$i])){
+								// set the correct width of the diffence by using its name
+								$widths[] = $font['C'][$options['differences'][$i]];
+							} else if(isset($font['C'][$i]))
+								$widths[] = $font['C'][$i];
+							else
+								$widths[] = 0;
+						}
+						$firstChar = 0;
+						$lastChar = 255;
+					}
+					
                     // also need to adjust the widths for the differences array
-                    if (isset($options['differences'])){
+                    /*if (isset($options['differences'])){
                         foreach ($options['differences'] as $charNum => $charName){
                             if ($charNum>$lastChar){
                                 for($i = $lastChar + 1; $i <= $charNum; $i++) {
@@ -2215,10 +2162,10 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
                                 }
                             }
                         }
-                    }
+                    }*/
                     
                     if($font['isUnicode']){
-                        $font['CIDWidths'] = $cid_widths;
+                        $font['CIDWidths'] = $font['C'];
                     }
                     $this->debug('selectFont: FirstChar='.$firstChar);
                     $this->debug('selectFont: LastChar='.$lastChar);
@@ -2365,8 +2312,8 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
 
 	/**
 	 * get the current font name being used
-	 * @param bool withStyle force to receive the style font name, instead of the base font
 	 * @since 0.12-rc12
+	 * @param bool $withStyle force to receive the style font name, instead of the base font
 	 * @return string current font name
 	 */
 	public function getCurrentFont($withStyle = false){
@@ -2634,6 +2581,54 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
         return $this->currentContents;
     }
 
+	/**
+     * return the pdf stream as a string returned from the function
+     * This method is protect to force user to use ezOutput from Cezpdf.php
+     */
+    function output($debug=0){
+        if ($debug){
+            // turn compression off
+            $this->options['compression']=0;
+        }
+
+        if ($this->arc4_objnum){
+            $this->ARC4_init($this->encryptionKey);
+        }
+        
+        if($this->valid){
+            $this->debug('The output method has been executed again', E_USER_WARNING);
+        }
+
+        $this->checkAllHere();
+
+        $xref=array();
+        // set the pdf version dynamically, depended on the objects being used
+        $content="%PDF-".sprintf('%.1F', $this->pdfversion)."\n%\xe2\xe3\xcf\xd3";
+        $pos=strlen($content);
+        foreach($this->objects as $k=>$v){
+            $tmp='o_'.$v['t'];
+            $cont=$this->$tmp($k,'out');
+            $content.=$cont;
+            $xref[]=$pos;
+            $pos+=strlen($cont);
+        }
+        ++$pos;
+        $content.="\nxref\n0 ".(count($xref)+1)."\n0000000000 65535 f \n";
+        foreach($xref as $p){
+            $content.=substr('0000000000',0,10-strlen($p+1)).($p+1)." 00000 n \n";
+        }
+        $content.="trailer\n<< /Size ".(count($xref)+1)." /Root 1 0 R /Info ".$this->infoObject." 0 R";
+        // if encryption has been applied to this document then add the marker for this dictionary
+        if ($this->arc4_objnum > 0){
+            $content .= " /Encrypt ".$this->arc4_objnum." 0 R";
+        }
+        if ($this->fileIdentifier){
+            $content .= " /ID [<".$this->fileIdentifier."><".$this->fileIdentifier.">]";
+        }
+        $content .= " >>\nstartxref\n".$pos."\n%%EOF\n";
+        return $content;
+    }
+
     /**
      * output the pdf code, streaming it to the browser
      * the relevant headers are set so that hopefully the browser will recognise it
@@ -2657,8 +2652,14 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
         } else {
             $tmp = $this->output();
         }
-        header("Content-Type: application/pdf");
-        header("Content-Length: ".strlen(ltrim($tmp)));
+		
+        ob_start();
+        echo $tmp;
+		
+		$length = ob_get_length();
+		
+		header("Content-Type: application/pdf");
+        header("Content-Length: ".$length);
         $fileName = (isset($options['Content-Disposition'])?$options['Content-Disposition']:'file.pdf');
         if(isset($options['download']) && $options['download'] == 1)
             $attached = 'attachment';
@@ -2666,9 +2667,10 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
             $attached = 'inline';
         header("Content-Disposition: $attached; filename=".$fileName);
         if (isset($options['Accept-Ranges']) && $options['Accept-Ranges']==1){
-            header("Accept-Ranges: ".strlen(ltrim($tmp)));
+            header("Accept-Ranges: ".$length);
         }
-        echo ltrim($tmp);
+		
+		ob_end_flush();
     }
 
     /**
@@ -2715,7 +2717,7 @@ use Rospdf\libraries\TTFsubset as TTFsubset;
                     $this->fonts[$cf]['subset'][mb_substr($text,$i, 1, 'UTF-16BE')] = true;
             }
         } else if(!$this->fonts[$cf]['isUnicode']) {
-            $text = mb_convert_encoding($text, $this->targetEncoding);
+            $text = mb_convert_encoding($text, $this->targetEncoding, 'UTF-8');
             // store all used characters if subset font is set to true
             if($this->fonts[$cf]['isSubset']){
                 for($i = 0; $i < strlen($text); $i++)

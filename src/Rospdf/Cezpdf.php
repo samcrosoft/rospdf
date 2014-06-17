@@ -1,6 +1,6 @@
 <?php
 namespace Rospdf;
-//include_once 'Cpdf.php';
+#include_once 'Cpdf.php';
 
 /**
  * draw all lines to ezTable output
@@ -57,7 +57,7 @@ define('EZ_GRIDLINE_COLUMNS', 1);
  * </pre>
  * @category Documents
  * @package Cpdf
- * @version [0.12-rc11] $Id: Cezpdf.php 206 2013-11-19 09:27:51Z ole1986 $
+ * @version [0.12-rc12] $Id: Cezpdf.php 266 2014-01-13 08:13:42Z ole1986 $
  * @author Wayne Munro, R&OS Ltd, <http://www.ros.co.nz/pdf>
  * @author Ole Koeckemann <ole1986@users.sourceforge.net>
  * @author 2002-07-24: Nicola Asuni <info@tecnick.com>
@@ -65,7 +65,8 @@ define('EZ_GRIDLINE_COLUMNS', 1);
  * @license GNU General Public License v3
  * @link http://pdf-php.sf.net
  */
- class Cezpdf extends Cpdf {
+// class Cezpdf extends Cpdf {
+ class Cezpdf extends CpdfExtra {
 
     /**
      * used to store most of the page configuration parameters
@@ -1844,14 +1845,14 @@ define('EZ_GRIDLINE_COLUMNS', 1);
     }
 
     /**
-     * pdf output as string
+     * return the pdf output as string
      *
-     * @param $options
-     * @return string pdf content as string
+     * @param bool $debug uncompressed output for debugging purposes
+     * @return string pdf document
      */
-    public function ezOutput($options=0){
+    public function ezOutput($debug = FALSE){
         $this->cleanUp();
-        return $this->output($options);
+		return $this->output($debug);
     }
 
     /**
